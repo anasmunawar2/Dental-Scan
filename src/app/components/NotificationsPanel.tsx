@@ -10,23 +10,13 @@ export default function NotificationsPanel({
   const [loadingIds, setLoadingIds] = useState<string[]>([]);
   const [notifications, setNotifications] = useState(initialNotifications);
 
-  // here i am polling
-  useEffect(() => {
-    setNotifications(initialNotifications);
-    const interval = setInterval(async () => {
-      const fresh = await fetchNotifications();
-      setNotifications(fresh);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
-
   const handleMarkAsRead = async (id: string) => {
     setLoadingIds((prev) => [...prev, id]);
     try {
       await onMarkAsRead(id);
       if (fetchNotifications) {
         const fresh = await fetchNotifications();
-        setNotifications(fresh);
+        setNotifications(fresh || []);
       }
     } finally {
       setLoadingIds((prev) => prev.filter((nid) => nid !== id));

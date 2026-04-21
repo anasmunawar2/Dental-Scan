@@ -50,11 +50,18 @@ export default function SmartDentalCapture({
   const fetchNotificationsCallback = useCallback(async () => {
     try {
       const data = await fetchNotifications();
+      const list = data.notifications || [];
       setNotifications(data.notifications || []);
+      return list;
     } catch (err) {
       console.error("Failed to fetch notifications", err);
       return [];
     }
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(fetchNotificationsCallback, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -67,6 +74,48 @@ export default function SmartDentalCapture({
       fetchNotificationsCallback();
     } catch (err) {
       console.error("Failed to mark notification as read", err);
+    }
+  };
+
+  const startCamera = async () => {
+    try {
+      setStatus({
+        level: "poor",
+        message: "Requesting camera access...",
+        color: "red",
+      });
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+      });
+
+      if (!videoRef.current) return;
+
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
+
+      setCameraReady(true);
+
+      setStatus({
+        level: "fair",
+        message: "Camera ready",
+        color: "orange",
+      });
+    } catch (err: any) {
+      console.error("Camera error:", err);
+      let message = "Camera error";
+
+      if (err.name === "NotAllowedError") {
+        message = "Permission denied";
+      } else if (err.name === "NotFoundError") {
+        message = "No camera found";
+      }
+
+      setStatus({
+        level: "poor",
+        message,
+        color: "red",
+      });
     }
   };
 
@@ -324,7 +373,7 @@ export default function SmartDentalCapture({
         color: "green",
       });
 
-      await fetchNotifications();
+      // await fetchNotifications();
       setImages([]);
       setCurrentStep(0);
       setStatus({
@@ -332,6 +381,7 @@ export default function SmartDentalCapture({
         message: "Ready to capture again.",
         color: "orange",
       });
+      startCamera();
 
       console.log("Scan uploaded:", data);
     } catch (err) {
