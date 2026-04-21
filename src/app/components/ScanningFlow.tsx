@@ -53,6 +53,7 @@ export default function SmartDentalCapture({
       setNotifications(data.notifications || []);
     } catch (err) {
       console.error("Failed to fetch notifications", err);
+      return [];
     }
   }, []);
 
@@ -296,47 +297,54 @@ export default function SmartDentalCapture({
   }, [status.level, images.length]);
 
   async function handleSubmit() {
-  if (images.length !== 5) {
+    if (images.length !== 5) {
+      setStatus({
+        level: "poor",
+        message: `Please capture all 5 images (${images.length}/5 captured)`,
+        color: "red",
+      });
+      return;
+    }
+
+    setIsUploading(true);
     setStatus({
-      level: "poor",
-      message: `Please capture all 5 images (${images.length}/5 captured)`,
-      color: "red",
+      level: "fair",
+      message: "Uploading scan...",
+      color: "orange",
     });
-    return;
+
+    try {
+      const data = await uploadScan(images);
+
+      if (data.error) throw new Error(data.error);
+
+      setStatus({
+        level: "good",
+        message: "Scan uploaded successfully!",
+        color: "green",
+      });
+
+      await fetchNotifications();
+      setImages([]);
+      setCurrentStep(0);
+      setStatus({
+        level: "fair",
+        message: "Ready to capture again.",
+        color: "orange",
+      });
+
+      console.log("Scan uploaded:", data);
+    } catch (err) {
+      console.error("Scan upload error:", err);
+      setStatus({
+        level: "poor",
+        message: "Upload failed. Please try again.",
+        color: "red",
+      });
+    } finally {
+      setIsUploading(false);
+    }
   }
-
-  setIsUploading(true);
-  setStatus({
-    level: "fair",
-    message: "Uploading scan...",
-    color: "orange",
-  });
-
-  try {
-    const data = await uploadScan(images);
-
-    if (data.error) throw new Error(data.error);
-
-    setStatus({
-      level: "good",
-      message: "Scan uploaded successfully!",
-      color: "green",
-    });
-
-    await fetchNotifications();
-
-    console.log("Scan uploaded:", data);
-  } catch (err) {
-    console.error("Scan upload error:", err);
-    setStatus({
-      level: "poor",
-      message: "Upload failed. Please try again.",
-      color: "red",
-    });
-  } finally {
-    setIsUploading(false);
-  }
-}
 
   function handleReset() {
     if (confirm("Are you sure you want to reset all captured images?")) {
@@ -392,6 +400,7 @@ export default function SmartDentalCapture({
             notifications={notifications}
             onClose={() => setShowNotifications(false)}
             onMarkAsRead={markAsRead}
+            fetchNotifications={fetchNotificationsCallback}
           />
         )}
 

@@ -1,17 +1,33 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { NotificationsPanelProps } from "@/types/notificationPanelProps";
 
 export default function NotificationsPanel({
-  notifications,
+  notifications: initialNotifications,
   onClose,
   onMarkAsRead,
-}: NotificationsPanelProps) {
+  fetchNotifications,
+}: NotificationsPanelProps & { fetchNotifications?: () => Promise<any[]> }) {
   const [loadingIds, setLoadingIds] = useState<string[]>([]);
+  const [notifications, setNotifications] = useState(initialNotifications);
+
+  // here i am polling
+  useEffect(() => {
+    setNotifications(initialNotifications);
+    const interval = setInterval(async () => {
+      const fresh = await fetchNotifications();
+      setNotifications(fresh);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   const handleMarkAsRead = async (id: string) => {
     setLoadingIds((prev) => [...prev, id]);
     try {
       await onMarkAsRead(id);
+      if (fetchNotifications) {
+        const fresh = await fetchNotifications();
+        setNotifications(fresh);
+      }
     } finally {
       setLoadingIds((prev) => prev.filter((nid) => nid !== id));
     }
@@ -21,17 +37,14 @@ export default function NotificationsPanel({
     <div className="absolute top-16 right-32 bg-zinc-800 border border-zinc-700 rounded shadow-lg w-80 max-h-96 overflow-y-auto z-50">
       <div className="p-2 border-b border-zinc-700 font-bold text-blue-300 flex justify-between items-center">
         Notifications
-        <button
-          className="text-xs text-gray-400"
-          onClick={onClose}
-        >
+        <button className="text-xs text-gray-400" onClick={onClose}>
           Close
         </button>
       </div>
-      {notifications.length === 0 ? (
+      {notifications?.length === 0 ? (
         <div className="p-4 text-gray-400 text-sm">No notifications</div>
       ) : (
-        notifications.map((n) => (
+        notifications?.map((n) => (
           <div
             key={n.id}
             className={`p-3 border-b border-zinc-700 text-sm flex justify-between items-center ${
@@ -39,9 +52,7 @@ export default function NotificationsPanel({
             }`}
           >
             <div>
-              <div className="font-semibold">
-                {n.type.replace("_", " ")}
-              </div>
+              <div className="font-semibold">{n.type.replace("_", " ")}</div>
               <div>{n.message}</div>
               <div className="text-xs text-gray-400">
                 {new Date(n.createdAt).toLocaleString()}

@@ -1,8 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { MessageResponse, MessagingProps, Sender } from "@/types/messaging";
+import { MessageResponse, MessagingProps } from "@/types/messaging";
 import { fetchMessages, sendMessage } from "@/apiclients/messagingApi.client";
-
 
 export default function MessagingSidebar({ threadId, sender }: MessagingProps) {
   const [messages, setMessages] = useState<MessageResponse[]>([]);
@@ -11,53 +10,69 @@ export default function MessagingSidebar({ threadId, sender }: MessagingProps) {
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const prevSenderRef = useRef(sender);
+
   useEffect(() => {
-  fetchMessages(threadId)
-    .then(setMessages)
-    .catch(() => setError("Failed to load messages."));
-}, [threadId]);
+    fetchMessages(threadId)
+      .then(setMessages)
+      .catch(() => setError("Failed to load messages."));
+  }, [threadId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (prevSenderRef.current !== sender) {
+      setInput("");
+      setError(null);
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+      prevSenderRef.current = sender;
+    }
+  }, [sender]);
+
   async function handleSend() {
-  if (!input.trim()) return;
-  setError(null);
-  setSending(true);
+    if (!input.trim()) return;
+    setError(null);
+    setSending(true);
 
-  const optimisticMsg: MessageResponse = {
-    id: "optimistic-" + Date.now(),
-    threadId,
-    content: input,
-    sender,
-    createdAt: new Date().toISOString(),
-  };
-  setMessages((prev) => [...prev, optimisticMsg]);
-  setInput("");
-
-  try {
-    const newMsg = await sendMessage({
+    const optimisticMsg: MessageResponse = {
+      id: "optimistic-" + Date.now(),
       threadId,
-      content: optimisticMsg.content,
+      content: input,
       sender,
-    });
-    setMessages((prev) =>
-      prev.map((m) => (m.id === optimisticMsg.id ? newMsg : m))
-    );
-  } catch (err: any) {
-    setError("Failed to send. Try again.");
-    setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
-    setInput(optimisticMsg.content);
-  } finally {
-    setSending(false);
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
+    setInput("");
+
+    try {
+      const newMsg = await sendMessage({
+        threadId,
+        content: optimisticMsg.content,
+        sender,
+      });
+      setMessages((prev) =>
+        prev.map((m) => (m.id === optimisticMsg.id ? newMsg : m)),
+      );
+    } catch (err: any) {
+      setError("Failed to send. Try again.");
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
+      setInput(optimisticMsg.content);
+    } finally {
+      setSending(false);
+    }
   }
-}
+
+  const headerText =
+    sender === "patient" ? "Message Your Dentist" : "Message Your Patient";
 
   return (
     <aside className="w-80 bg-zinc-900 border-l border-zinc-800 flex flex-col h-full">
       <div className="p-4 border-b border-zinc-800 font-bold text-blue-300">
-        Message Your Clinic
+        {headerText}
       </div>
       <div className="flex-1 overflow-y-auto scrollbar-hide p-4 space-y-2">
         {messages.length === 0 && (
