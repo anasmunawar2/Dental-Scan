@@ -1,0 +1,1 @@
+self.__REACT_LOADABLE_MANIFEST="{\"app\\\\components\\\\ScanningFlow.tsx -> @mediapipe/face_mesh\":{\"id\":\"app\\\\components\\\\ScanningFlow.tsx -> @mediapipe/face_mesh\",\"files\":[\"static/chunks/_app-pages-browser_node_modules_mediapipe_face_mesh_face_mesh_js.js\"]}}"
