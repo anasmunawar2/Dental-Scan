@@ -10,6 +10,21 @@ export default function NotificationsPanel({
   const [loadingIds, setLoadingIds] = useState<string[]>([]);
   const [notifications, setNotifications] = useState(initialNotifications);
 
+  useEffect(() => {
+    setNotifications(initialNotifications);
+  }, [initialNotifications]);
+
+  useEffect(() => {
+    if (!fetchNotifications) return;
+
+    const interval = setInterval(async () => {
+      const fresh = await fetchNotifications();
+      setNotifications(fresh || []);
+    }, 10_000);
+
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
   const handleMarkAsRead = async (id: string) => {
     setLoadingIds((prev) => [...prev, id]);
     try {
